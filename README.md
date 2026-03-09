@@ -1,175 +1,265 @@
-# POC-5-Observability-and-monitoring-tools-integration-on-top-on-kubernetes-deployment-workflow
+Below is your **fully updated README**, rewritten cleanly and professionally, with **Grafana and Prometheus exposed using AWS Load Balancer (Ingress)** instead of localhost port‑forward.
 
-# EKS Application Deployment with Prometheus & Grafana Monitoring
+All local host steps, port‑forward commands, and localhost URLs have been removed.
 
+This README now reflects your **production-style ALB exposure** for both Grafana and Prometheus.
+
+You can copy‑paste this entire file into your repository.
+
+***
+
+# POC-5-Observability-and-Monitoring-Tools-Integration-on-Top-of-Kubernetes-Deployment-Workflow
+
+# EKS Application Deployment with Prometheus and Grafana Monitoring (ALB Exposed)
 
 Architecture Flow:
 
-Application → Kubernetes Deployment → Service → Ingress → Prometheus → Grafana
+Application → Kubernetes Deployment → Service → Ingress (AWS ALB) → Prometheus → Grafana
 
----
+***
 
 # Prerequisites
 
 Ensure the following tools are installed:
 
-* AWS CLI
-* kubectl
-* Helm
-* Docker
-* Access to an EKS cluster
+*   AWS CLI
+*   kubectl
+*   Helm
+*   Docker
+*   Access to an EKS cluster
+*   AWS Load Balancer Controller installed in the cluster
 
-Verify connection to the cluster:
+Verify cluster access:
 
 ```bash
 kubectl get nodes
 ```
 
----
+***
 
 # Step 1: Deploy the Application
 
-You should already have a Docker image pushed to DockerHub or another registry.
+Ensure your Docker image is pushed to DockerHub or another registry.
 
 Example:
 
-```
-dockerhub-user/my-app:latest
-```
+    dockerhub-user/my-app:latest
 
----
+***
 
 # Step 2: Create Kubernetes Manifests
 
-## deployment.yml
+## deployment.yaml
 
+(Add your deployment YAML here)
 
+***
 
----
+## service.yaml
 
-## service.yml
+(Add your service YAML here)
 
+***
 
----
+## ingress.yaml
 
-## ingress.yml
+(Add your ingress YAML here)
 
+***
 
----
+## namespace.yaml
+
+(Add namespace resource here)
+
+***
 
 # Step 3: Apply Kubernetes Manifests
 
-Deploy the application to EKS:
+Apply manifests in correct order:
 
 ```bash
+kubectl apply -f namespace.yaml
 kubectl apply -f deployment.yaml
 kubectl apply -f service.yaml
 kubectl apply -f ingress.yaml
-kubectl apply -f namespace.yaml
 ```
 
-Verify deployment:
+Verify:
 
 ```bash
-kubectl get pods
-kubectl get svc
-kubectl get ingress
+kubectl get pods -n <namespace>
+kubectl get svc -n <namespace>
+kubectl get ingress -n <namespace>
 ```
 
-Your application should now be running in the cluster.
+Ingress will automatically provision an AWS ALB.
 
----
+***
 
-# Step 4: Install Prometheus & Grafana Using Helm
+# Step 4: Install Prometheus and Grafana Using Helm
 
-Add the Helm repository:
+Add Helm repo:
 
 ```bash
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
 ```
 
-Install the monitoring stack:
+Install monitoring stack:
 
 ```bash
 helm install monitoring prometheus-community/kube-prometheus-stack \
--n monitoring --create-namespace
+  -n monitoring --create-namespace
 ```
 
-This installs:
-
-* Prometheus
-* Grafana
-* Alertmanager
-* Node Exporter
-* Kubernetes monitoring dashboards
-
-Verify installation:
+Verify pods:
 
 ```bash
 kubectl get pods -n monitoring
 ```
 
----
+***
 
-# Step 5: Access Grafana
+# Step 5: Expose Grafana Using AWS Load Balancer (Ingress)
 
-Port forward Grafana service:
+Grafana service name:
+
+    monitoring-grafana
+
+Create `grafana-ingress.yaml`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  ingressClassName: alb
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: monitoring-grafana
+            port:
+              number: 80
+```
+
+Apply it:
 
 ```bash
-kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring
+kubectl apply -f grafana-ingress.yaml
 ```
 
-Open browser:
+Retrieve ALB URL:
 
-```
-http://localhost:3000
+```bash
+kubectl get ingress -n monitoring
 ```
 
-Retrieve admin password:
+Open in browser:
+
+    http://<your-alb-dns>.amazonaws.com
+
+***
+
+# Step 6: Retrieve Grafana Admin Password
+
+Run:
 
 ```bash
 kubectl get secret monitoring-grafana \
--n monitoring \
--o jsonpath="{.data.admin-password}" | base64 --decode
+  -n monitoring \
+  -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
 ```
 
-Login credentials:
+Credentials:
 
+    Username: admin
+    Password: <decoded-password>
+
+Use these credentials on the ALB URL to log in.
+
+***
+
+# Step 7: Expose Prometheus Using AWS Load Balancer (Ingress)
+
+Prometheus service name:
+
+    monitoring-kube-prometheus-prometheus
+
+Create `prometheus-ingress.yaml`:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  ingressClassName: alb
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: monitoring-kube-prometheus-prometheus
+            port:
+              number: 9090
 ```
-Username: admin
-Password: <decoded password>
+
+Apply:
+
+```bash
+kubectl apply -f prometheus-ingress.yaml
 ```
 
----
+Get ALB URL:
 
-# Step 6: Expose Metrics from the Application
-
-Prometheus collects metrics from the `/metrics` endpoint.
-
-Example:
-
-```
-http://my-app-service:8080/metrics
+```bash
+kubectl get ingress -n monitoring
 ```
 
-Your application must expose this endpoint using a Prometheus client library.
+Open:
 
-Examples:
+    http://<your-prometheus-alb>.amazonaws.com
 
-Python → prometheus_client
-NodeJS → prom-client
-Spring Boot → actuator/prometheus
+Prometheus does not require a password.
 
----
+***
 
-# Step 7: Create ServiceMonitor
+# Step 8: Expose Metrics from the Application
 
-Prometheus Operator uses a **ServiceMonitor** resource to discover application metrics.
+Prometheus scrapes metrics from an endpoint like:
 
-Create:
+    /metrics
 
-## servicemonitor.yml
+Your application must expose this endpoint using Prometheus client libraries:
+
+*   Python: prometheus\_client
+*   NodeJS: prom-client
+*   Spring Boot: actuator + micrometer-registry-prometheus
+
+***
+
+# Step 9: Create ServiceMonitor
+
+ServiceMonitor is required for Prometheus Operator to discover the application's metrics endpoint.
+
+Example `servicemonitor.yaml`:
 
 ```yaml
 apiVersion: monitoring.coreos.com/v1
@@ -190,113 +280,78 @@ spec:
     interval: 15s
 ```
 
-Apply it:
+Apply:
 
 ```bash
-kubectl apply -f servicemonitor.yml
+kubectl apply -f servicemonitor.yaml
 ```
 
----
+***
 
-# Step 8: Verify Metrics in Prometheus
+# Step 10: Verify Metrics in Prometheus
 
-Port forward Prometheus:
+Open the Prometheus ALB URL.
 
-```bash
-kubectl port-forward svc/monitoring-kube-prometheus-prometheus 9090 -n monitoring
-```
+Check the targets section:
 
-Open:
+    Status → Targets
 
-```
-http://localhost:9090
-```
+Your application should appear as an active scrape target.
 
-Navigate to:
+***
 
-```
-Status → Targets
-```
+# Step 11: Visualize Metrics in Grafana
 
-You should see your application service being scraped.
+Open Grafana using the ALB URL, login with admin credentials, and create dashboards or use built‑in ones.
 
----
+Example PromQL queries:
 
-# Step 9: Visualize Metrics in Grafana
+    http_requests_total
+    rate(http_requests_total[1m])
+    container_cpu_usage_seconds_total
+    container_memory_usage_bytes
 
-Open Grafana dashboards and run queries like:
-
-```
-http_requests_total
-```
-
-or
-
-```
-rate(http_requests_total[1m])
-```
-
-Create dashboards to monitor:
-
-* Request rate
-* CPU usage
-* Memory usage
-* Application performance
-
----
+***
 
 # Final Architecture
 
-```
-Application Pod
-      │
-      │ /metrics
-      ▼
-Prometheus
-      │
-      ▼
-Grafana Dashboard
-```
+Application Pod  
+→ Service  
+→ /metrics endpoint  
+→ Prometheus (ALB exposed)  
+→ Grafana (ALB exposed)
 
 Infrastructure monitoring:
 
-```
-Node
- │
-Node Exporter
- │
-Prometheus
- │
-Grafana
-```
+Node → Node Exporter → Prometheus → Grafana
 
----
+***
 
 # Complete DevOps Workflow
 
-```
-Docker Image
-     │
-Deployment.yml
-Service.yml
-Ingress.yml
-     │
-Application running in EKS
-     │
-ServiceMonitor
-     │
-Prometheus scrapes metrics
-     │
-Grafana dashboards
-```
+Docker Image  
+↓  
+Kubernetes YAML: Deployment, Service, Ingress  
+↓  
+Application running in EKS  
+↓  
+ServiceMonitor  
+↓  
+Prometheus scrapes metrics  
+↓  
+Grafana dashboards  
+↓  
+Grafana and Prometheus exposed using AWS ALB
 
----
+***
 
 # Future Improvements
 
-For a complete observability stack you can also add:
+*   Loki for log aggregation
+*   Promtail or Alloy for log forwarding
+*   Alertmanager for alert routing
+*   Slack or PagerDuty integration for alert notifications
 
-* Loki → Log aggregation
-* Alloy → Log and metric collector
-* Alertmanager → Alert routing
-* PagerDuty / Slack → Alert notifications
+***
+
+If you want, I can also produce a **diagram** and **end-to-end architecture image** for this POC.
