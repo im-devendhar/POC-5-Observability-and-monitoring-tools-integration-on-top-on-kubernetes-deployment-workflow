@@ -43,72 +43,17 @@ dockerhub-user/my-app:latest
 
 ## deployment.yml
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-app
-  labels:
-    app: my-app
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: my-app
-  template:
-    metadata:
-      labels:
-        app: my-app
-    spec:
-      containers:
-      - name: my-app
-        image: dockerhub-user/my-app:latest
-        ports:
-        - containerPort: 8080
-```
+
 
 ---
 
 ## service.yml
 
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: my-app-service
-  labels:
-    app: my-app
-spec:
-  selector:
-    app: my-app
-  ports:
-  - name: http
-    port: 80
-    targetPort: 8080
-```
 
 ---
 
 ## ingress.yml
 
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-app-ingress
-spec:
-  rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: my-app-service
-            port:
-              number: 80
-```
 
 ---
 
