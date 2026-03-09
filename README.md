@@ -65,6 +65,7 @@ Deploy the application to EKS:
 kubectl apply -f deployment.yaml
 kubectl apply -f service.yaml
 kubectl apply -f ingress.yaml
+kubectl apply -f namespace.yaml
 ```
 
 Verify deployment:
