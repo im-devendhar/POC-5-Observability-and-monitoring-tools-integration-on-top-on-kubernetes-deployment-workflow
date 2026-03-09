@@ -62,9 +62,9 @@ dockerhub-user/my-app:latest
 Deploy the application to EKS:
 
 ```bash
-kubectl apply -f deployment.yml
-kubectl apply -f service.yml
-kubectl apply -f ingress.yml
+kubectl apply -f deployment.yaml
+kubectl apply -f service.yaml
+kubectl apply -f ingress.yaml
 ```
 
 Verify deployment:
