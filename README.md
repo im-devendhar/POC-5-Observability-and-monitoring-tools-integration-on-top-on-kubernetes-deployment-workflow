@@ -1,12 +1,4 @@
-Below is your **fully updated README**, rewritten cleanly and professionally, with **Grafana and Prometheus exposed using AWS Load Balancer (Ingress)** instead of localhost port‑forward.
 
-All local host steps, port‑forward commands, and localhost URLs have been removed.
-
-This README now reflects your **production-style ALB exposure** for both Grafana and Prometheus.
-
-You can copy‑paste this entire file into your repository.
-
-***
 
 # POC-5-Observability-and-Monitoring-Tools-Integration-on-Top-of-Kubernetes-Deployment-Workflow
 
