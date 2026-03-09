@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: talesofchina
-        image: devenops641/tales-of-china:69
+        image: devenops641/tales-of-china:latest
         imagePullPolicy: Always   
         ports:
         - containerPort: 80
